@@ -1,0 +1,53 @@
+---
+title: "ab_testing"
+author: "Jeff Tjeuw"
+date: "29/08/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Calculate Analytic Statistics
+
+Calculate some analytic statistics
+
+```{r}
+setwd("~/data_research/u_ab_testing")
+baseline = read.csv("baseline.csv", header = FALSE)
+# retention = users who pay / users who enroll
+ret_rate = 0.53
+enrol_no = 660
+# net conversion = users who pay / users click start button
+net_conv = 0.1093125
+click_no = 3200
+
+# Estimate the standard deviation using binomial/normal equation
+estimate_sd <- function(prob, n) {
+  return(sqrt(prob*(1-prob)/n))
+}
+
+ret_sd <- estimate_sd(ret_rate, enrol_no)
+conv_sd <- estimate_sd(net_conv, click_no)
+
+# Calculate some rates
+base_total = 40000
+click_rate = click_no / base_total
+enrol_rate = enrol_no / base_total
+
+# Scale the analytic standard deviations by sample size
+sample_n = 5000
+ret_sd * sqrt(enrol_no/(enrol_rate * sample_n))
+conv_sd * sqrt(click_no/(click_rate * sample_n))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
