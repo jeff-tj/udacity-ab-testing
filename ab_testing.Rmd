@@ -79,3 +79,38 @@ sprintf("Pageviews required: %i", ceiling(conv_size * 2 /click_rate))
 ```
 Note this is different to the answers given by the web based application for the answer used for the grader (http://www.evanmiller.org/ab-testing/sample-size.html).
 The answers given are the same as given by the sample code linked above.
+
+## Sanity Checks on the Data
+
+```{r sanity checks}
+# Read in the experimental data
+res_con <- read.csv("final_proj_results_control.csv", header = TRUE)
+res_exp <- read.csv("final_proj_results_exp.csv", header = TRUE)
+
+# Omit the rows where we do not have complete data
+res_con_no_na <- na.omit(res_con)
+res_exp_no_na <- na.omit(res_exp)
+
+# Count pageviews and analyse
+pv_con <- colSums(res_con[2])
+pv_exp <- colSums(res_exp[2])
+pv_frac = pv_exp / (pv_con + pv_exp)
+pv_sd = sqrt(0.5 * 0.5 / (pv_con + pv_exp))
+pv_z = -qnorm(0.05 / 2)
+pv_cil = 0.5 - pv_z * pv_sd
+pv_ciu = 0.5 + pv_z * pv_sd
+sprintf("Pageview confidence interval is (%.4f, %.4f)", pv_cil, pv_ciu)
+sprintf("Pageview fraction in experiment group: %.4f", pv_frac)
+
+# Count clicks and analyse
+ck_con <- colSums(res_con[3])
+ck_exp <- colSums(res_exp[3])
+ck_frac = ck_exp / (ck_con + ck_exp)
+ck_sd = sqrt(0.5 * 0.5 / (ck_con + ck_exp))
+ck_z = -qnorm(0.05 / 2)
+ck_cil = 0.5 - ck_z * ck_sd
+ck_ciu = 0.5 + ck_z * ck_sd
+sprintf("Clicks confidence interval is (%.4f, %.4f)", ck_cil, ck_ciu)
+sprintf("Clicks fraction in experiment group: %.4f", ck_frac)
+```
+
