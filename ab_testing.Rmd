@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Calculate some analytic statistics
 
-```{r}
+```{r introduction}
 setwd("~/data_research/u_ab_testing")
 baseline = read.csv("baseline.csv", header = FALSE)
 # retention = users who pay / users who enroll
@@ -42,12 +42,40 @@ ret_sd * sqrt(enrol_no/(enrol_rate * sample_n))
 conv_sd * sqrt(click_no/(click_rate * sample_n))
 ```
 
-## Including Plots
+## Calculating the page views required
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+```{r pageviews, echo=FALSE}
+# Adapt the udacity code to calculate experiment size
+# Link: https://goo.gl/T5jBPi
+sample_size <- function(se, d_min, alpha=0.05, beta=0.2, n_max=40000) {
+  # se - standard error at n=1
+  # d_min - minimum detecetable effect
+  # alpha - confidence interval
+  # beta - (1-beta) is the probability the effect detected
+  # n_max - the largest number to test
+  z_star = -qnorm(alpha / 2)
+  n = 1
+  while (n<=n_max) {
+    prob = pnorm(z_star*se/sqrt(n), mean=d_min, sd=(se/sqrt(n)))
+    if (prob <= beta) {
+      return(n)
+    }
+    n = n + 1
+  }
+  return("No answer with current n_max")
+}
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Calculate sample size for retention
+ret_size <- sample_size(se=sqrt(ret_rate*(1 - ret_rate)*2), d_min=0.01)
+sprintf("Sample size required for retention: %i", ret_size)
+sprintf("Pageviews required: %i", ceiling(ret_size * 2 / enrol_rate))
+
+# Calculate sample size for conversion
+conv_size <- sample_size(se=sqrt(net_conv*(1 - net_conv)*2), d_min=0.0075)
+sprintf("Sample size required for conversion: %i", conv_size)
+sprintf("Pageviews required: %i", ceiling(conv_size * 2 /click_rate))
+```
+Note this is different to the answers given by the web based application for the answer used for the grader (http://www.evanmiller.org/ab-testing/sample-size.html).
+The answers given are the same as given by the sample code linked above.
