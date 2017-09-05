@@ -80,7 +80,7 @@ sprintf("Retention sd: %.4f", sr_sd)
 We will not be required to use the Bonferroni correction in this experiment as we are not testing multiple hypotheses.
 
 We calculate the pageviews using the standard alpha = 0.05 and beta = 0.2:
-```{r pageviews, echo=FALSE}
+```{r pageviews}
 # Adapt the udacity code to calculate experiment size
 # Link: https://goo.gl/T5jBPi
 sample_size <- function(se, d_min, alpha=0.05, beta=0.2, n_max=40000) {
@@ -279,3 +279,14 @@ Both these conclusions are in line with our initial thoughts outlined above.
 We have seen that two of our evaluation metrics behaved as we would expect. We do not have enough data to make a conclusion about the retention rate - which would be a good piece of information to have when making this change. However the length of running an experiment that would allow us to gather the data would be prohibtive. Therefore the choice is comes down to a business decision. 
 
 Given that two of the metrics are favourable, I would recommend going ahead and implementing thew change, given that it does not significantly impact the proportion of students paying, but it does reduce significantly the number signing up for a free trial - which would help improve Udacity delivery by reducing resources spent on students who do not think they will have time to complete a course.
+
+## Follow Up Experiment
+A good follow up experiment would be whether allowing the students, who initially say they have insufficient time, to access the material for free eventually sign up for paid courses if they are sent a newsletter. The hypothesis here being that such students are keen to learn, but lack the free time to do so now, but will sign up when they have time later. In knowing whether this is the case, it could be valuable to Udacity to know whether to follow up with such students with help and also reminders of when courses open and start accepting students.
+
+I think that to set this up we would require the students who access the free material to also create a free-account - therefore our unit of diversion would be user-id. This would be required as we would have to be able to track the students over time as well as communicate with them
+
+We then send a proportion of the accounts follow-up email newsletters. Of course the difficulty here is that different students have different circumstances and so will become free at different times - however unless there is some good reason, we can assume that on average the distributions should be roughly equal. We then measure the number of students that sign up and make a payment.
+
+We then compare the sign up rates between the control group that were just allowed to continue accessing the free material and the group that was sent follow up emails. We would want to see a significantly higher sign up rate in the second group. 
+
+This would be a good experiment from a business stand point as it would not impact on revenue (these are students who were not currently paying) and the costs are very low (since we are just sending out follow up emails)
