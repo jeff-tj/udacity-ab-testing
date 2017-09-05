@@ -8,10 +8,12 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-## Udacity AB Testing Project
+# Udacity AB Testing Project
 Here we consider a hypothetical experiment run by Udacity: some students who clicked the "Start Free Trial" button would see a question asking how much time they had available to devote, with students who indicated 5 or less hours receiving a message that a greater time commitment would be required.
 
 The hypothesis being tested: would this reduce the number of frustrated students leaving the free trial.
+
+# Experiment Design
 
 ## Metric Choice
 Given the hypothesis we would want to see the proportion of students who make a payment increase.
@@ -27,6 +29,7 @@ For evaluation metrics we have a number of choices. The number of user-ids would
 * Gross conversion
 * Retention
 * Net conversion
+Ideally I would like to see gross conversion reduce (i.e. users are more selective about when they enrol), net conversion stay about the same (i.e. we have not reduced the number of dedicated students signing up) and retention to increase (i.e. a smaller number enrol, but a greater proportion of them end up making a payment).
 
 ## Measuring Standard Deviation
 We calculate the standard deviation of our evaluation metrics.
@@ -73,7 +76,10 @@ sprintf("Retention sd: %.4f", sr_sd)
 ```
 
 ## Sizing
+### Number of samples required
+We will not be required to use the Bonferroni correction in this experiment as we are not testing multiple hypotheses.
 
+We calculate the pageviews using the standard alpha = 0.05 and beta = 0.2:
 ```{r pageviews, echo=FALSE}
 # Adapt the udacity code to calculate experiment size
 # Link: https://goo.gl/T5jBPi
@@ -94,26 +100,61 @@ sample_size <- function(se, d_min, alpha=0.05, beta=0.2, n_max=40000) {
   }
   return("No answer with current n_max")
 }
+# Calculate sample size for gross conversion
+gross_conv_size <- sample_size(se=sqrt(gross_conv*(1 - gross_conv)*2), d_min=0.01)
+sprintf("Sample size required for gross conversion: %i", gross_conv_size)
+sprintf("Pageviews required: %i", ceiling(gross_conv_size * 2 /click_rate))
+
+# Calculate sample size for net conversion
+net_conv_size <- sample_size(se=sqrt(net_conv*(1 - net_conv)*2), d_min=0.0075)
+sprintf("Sample size required for net conversion: %i", net_conv_size)
+sprintf("Pageviews required: %i", ceiling(net_conv_size * 2 /click_rate))
 
 # Calculate sample size for retention
 ret_size <- sample_size(se=sqrt(ret_rate*(1 - ret_rate)*2), d_min=0.01)
 sprintf("Sample size required for retention: %i", ret_size)
 sprintf("Pageviews required: %i", ceiling(ret_size * 2 / enrol_rate))
-
-# Calculate sample size for conversion
-conv_size <- sample_size(se=sqrt(net_conv*(1 - net_conv)*2), d_min=0.0075)
-sprintf("Sample size required for conversion: %i", conv_size)
-sprintf("Pageviews required: %i", ceiling(conv_size * 2 /click_rate))
 ```
 Note this is different to the answers given by the web based application for the answer used for the grader (http://www.evanmiller.org/ab-testing/sample-size.html).
-The answers given are the same as given by the sample code linked above.
 
-## Sanity Checks on the Data
+We can see that we may run into an issue here if we wish to use retention, as it will require some 4,739,879 page views. We could increase our beta, but by doing so we will be less certain whether the change we observe will be significant. We see what the required duration will be for each case.
 
-```{r sanity checks}
+### Duration and Exposure
+We now need to decide how much data to divert to the experiment. I would classify the experiment as low risk - given that in the signup process the user will be required to enter a fair bit of information - one extra question does not seem like if would be significant.
+
+Therefore I feel it would be reasonable to divert 50% of regular traffic to the experiment.
+
+Using this assumption, we now calculate the duration required.
+```{r}
+# Exposure - how much of the traffic to divert
+exp = 0.5
+
+sprintf("Days required for gross conversion: %i", 
+        ceiling(gross_conv_size * 2 /click_rate / (exp * base_total)))
+sprintf("Days required for net conversion: %i", 
+        ceiling(net_conv_size * 2 / click_rate / (exp * base_total)))
+sprintf("Days required for retention: %i", 
+        ceiling(ret_size * 2 / enrol_rate / (exp * base_total)))
+```
+We now see that it would be impractical to use retention as an evaluation metric - it would require almost 2/3 of a year to run the experiment.
+
+Therefore, I settle on using:
+* Gross conversion
+* Net conversion
+as the evaluation metrics when evaluating the experimental data. We retain the above invariant metrics.
+
+# Experiment Analysis
+
+## Sanity Checks
+We perform some sanity checks on our invariant metrics.
+```{r sanity_checks}
 # Read in the experimental data
 res_con <- read.csv("final_proj_results_control.csv", header = TRUE)
 res_exp <- read.csv("final_proj_results_exp.csv", header = TRUE)
+
+# Calculate click-through-probability (ctp)
+res_con$ctp = res_con$Clicks / res_con$Pageviews
+res_exp$ctp = res_exp$Clicks / res_exp$Pageviews
 
 # Omit the rows where we do not have complete data
 res_con_no_na <- na.omit(res_con)
@@ -140,6 +181,101 @@ ck_cil = 0.5 - ck_z * ck_sd
 ck_ciu = 0.5 + ck_z * ck_sd
 sprintf("Clicks confidence interval is (%.4f, %.4f)", ck_cil, ck_ciu)
 sprintf("Clicks fraction in experiment group: %.4f", ck_frac)
+
+# Click-through-probability analysis
+ctp_con = ck_con / pv_con
+ctp_exp = ck_exp / pv_exp
+# Calculate the ctp pool probability and se
+ctp_pp = (ck_con + ck_exp) / (pv_con + pv_exp)
+ctp_se = sqrt(ctp_pp * (1-ctp_pp) * (1/pv_con + 1/pv_exp))
+# Calculate difference and confidence interval around 0
+ctp_z = 1.96
+ctp_diff = ctp_exp - ctp_con
+sprintf("The CTP confidence interval is (%.4f, %.4f)", -ctp_z*ctp_se, ctp_z*ctp_se)
+sprintf("The CTP difference is: %.4f", ctp_diff)
+
 ```
-Both invariant metrics pass the sanity check - namely the fraction in each one is within the 95% confidence interval.
-(Note however that the fraction required by the grader seems to be the fraction in the control group)
+All invariant metrics pass the sanity check - namely the results in each case is within the 95% confidence interval. Therefore we can proceed with the rest of the analysis.
+
+(I note that the fraction required by the grader seems to be the fraction in the control group)
+
+## Effect size
+We now move on to evaluate the effect size and confidence interval for gross conversion and net conversion. 
+
+We note that as we do not have an emprical standard error (SE) from AA testing, we will compute a pooled-probability to compute the SE in each case.
+```{r effect_size}
+# Sum up the clicks, enrollments and payments
+ck_count_con <- colSums(res_con_no_na[3])
+enrol_count_con <- colSums(res_con_no_na[4])
+pay_count_con <- colSums(res_con_no_na[5])
+
+ck_count_exp <- colSums(res_exp_no_na[3])
+enrol_count_exp <- colSums(res_exp_no_na[4])
+pay_count_exp <- colSums(res_exp_no_na[5])
+
+# Calculate gross conversion stats
+gc_con = enrol_count_con / ck_count_con
+gc_exp = enrol_count_exp / ck_count_exp
+gc_diff = gc_exp - gc_con
+gc_pp = (enrol_count_con + enrol_count_exp) / (ck_count_con + ck_count_exp)
+gc_se = sqrt(gc_pp * (1 - gc_pp) * (1/ck_count_con + 1/ck_count_exp))
+sprintf("The difference in gross conversion rates is %.4f, with a ci: (%.4f, %.4f)", 
+        gc_diff, gc_diff - 1.96 * gc_se, gc_diff + 1.96 * gc_se)
+
+# Calculate net conversion stats
+nc_con = pay_count_con / ck_count_con
+nc_exp = pay_count_exp / ck_count_exp
+nc_diff = nc_exp - nc_con
+nc_pp = (pay_count_con + pay_count_exp) / (ck_count_con + ck_count_exp)
+nc_se = sqrt(nc_pp * (1 - nc_pp) * (1/ck_count_con + 1/ck_count_exp))
+sprintf("The difference in net conversion rates is %.4f, with a ci: (%.4f, %.4f)",
+        nc_diff, nc_diff - 1.96 * nc_se, nc_diff + 1.96 * nc_se)
+```
+From this we can see that the effect on gross conversion rates is both statistically significant and practically significant (at d_min = 0.01). This shows that the change is having the effect of people with not enough time to sign up.
+
+However, the slight decrease in net conversion rates is neither satistically nor practically significant. Therefore there is no statistically significant impact on students who end up paying.
+
+Both effects are in line with our expectations above.
+
+## Sign Tests
+We perform a sign test to see if there are any statistically significant differences in our results.
+```{r}
+# Calculate daily rates
+res_con_no_na$gc <- res_con_no_na$Enrollments / res_con_no_na$Clicks
+res_con_no_na$nc <- res_con_no_na$Payments / res_con_no_na$Clicks
+res_exp_no_na$gc <- res_exp_no_na$Enrollments / res_exp_no_na$Clicks
+res_exp_no_na$nc <- res_exp_no_na$Payments / res_exp_no_na$Clicks
+
+# Calculate differences
+gc_diff <- res_exp_no_na$gc - res_con_no_na$gc
+nc_diff <- res_exp_no_na$nc - res_con_no_na$nc
+
+# Perform sign test
+gc_n = length(gc_diff)
+gc_r = sum(gc_diff > 0)
+gc_r <- if(gc_r > gc_n/2) gc_n-gc_r else gc_r #Reverse if greater than for 2-tailed sign test
+gc_stprob <- pbinom(gc_r, size=gc_n, prob=0.5) * 2
+
+nc_n = length(nc_diff)
+nc_r = sum(nc_diff > 0)
+nc_r <- if(nc_r > nc_n/2) nc_n-nc_r else nc_r #Reverse if greater than for 2-tailed sign test
+nc_stprob <- pbinom(nc_r, size=nc_n, prob=0.5) * 2
+
+sprintf("The 2-tailed sign test probability for gross conversion is: %.4f", 
+        gc_stprob)
+sprintf("The 2-tailed sign test probability for net conversion is: %.4f", 
+        nc_stprob)
+```
+Lastly we can see that the sign test confirms the results for gross conversion are statistically significant (at alpha = 0.05) and that the net conversion results are not statistically significant.
+
+## Summary
+We did not use the Bonferroni correction here as we were not testing multiple hypotheseses (i.e. we only made one change).
+
+We can say that the change had a statistically significant reduction in the gross conversion rate, both when considering the effect size and sign test. It also did not have a statistically significant impact on the net conversion. 
+
+Both these conclusions are in line with our initial thoughts outlined above.
+
+## Recommendation
+We have seen that two of our evaluation metrics behaved as we would expect. We do not have enough data to make a conclusion about the retention rate - which would be a good piece of information to have when making this change. However the length of running an experiment that would allow us to gather the data would be prohibtive. Therefore the choice is comes down to a business decision. 
+
+Given that two of the metrics are favourable, I would recommend going ahead and implementing thew change, given that it does not significantly impact the proportion of students paying, but it does reduce significantly the number signing up for a free trial - which would help improve Udacity delivery by reducing resources spent on students who do not think they will have time to complete a course.
