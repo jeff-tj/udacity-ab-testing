@@ -8,20 +8,39 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Udacity AB Testing Project
+Here we consider a hypothetical experiment run by Udacity: some students who clicked the "Start Free Trial" button would see a question asking how much time they had available to devote, with students who indicated 5 or less hours receiving a message that a greater time commitment would be required.
 
-## Calculate Analytic Statistics
+The hypothesis being tested: would this reduce the number of frustrated students leaving the free trial.
 
-Calculate some analytic statistics
+## Metric Choice
+Given the hypothesis we would want to see the proportion of students who make a payment increase.
+
+### Invariant Metrics:
+* Number of Cookies
+* Number of Clicks
+* Click-through-probability
+We should expect these to remain unchanged as users at these points would not have experienced the change - i.e. we would expect roughly the same number of students to visit the site as well as the same number of students to click the button. Therefore the click-through-probability should also be invariant.
+
+### Evaluation Metrics:
+For evaluation metrics we have a number of choices. The number of user-ids would be a poor choice - as the change in an of itself would not tell us whether those students continued past the free-trial or not. Therefore, our invariant metrics could be:
+* Gross conversion
+* Retention
+* Net conversion
+
+## Measuring Standard Deviation
+We calculate the standard deviation of our evaluation metrics.
 
 ```{r introduction}
 setwd("~/data_research/u_ab_testing")
 baseline = read.csv("baseline.csv", header = FALSE)
-# retention = users who pay / users who enroll
-ret_rate = 0.53
-enrol_no = 660
+# gross conversion
 # net conversion = users who pay / users click start button
 net_conv = 0.1093125
 click_no = 3200
+# retention = users who pay / users who enroll
+ret_rate = 0.53
+enrol_no = 660
 
 # Estimate the standard deviation using binomial/normal equation
 estimate_sd <- function(prob, n) {
@@ -43,8 +62,6 @@ conv_sd * sqrt(click_no/(click_rate * sample_n))
 ```
 
 ## Calculating the page views required
-
-You can also embed plots, for example:
 
 ```{r pageviews, echo=FALSE}
 # Adapt the udacity code to calculate experiment size
@@ -96,7 +113,7 @@ pv_con <- colSums(res_con[2])
 pv_exp <- colSums(res_exp[2])
 pv_frac = pv_exp / (pv_con + pv_exp)
 pv_sd = sqrt(0.5 * 0.5 / (pv_con + pv_exp))
-pv_z = -qnorm(0.05 / 2)
+pv_z = 1.96
 pv_cil = 0.5 - pv_z * pv_sd
 pv_ciu = 0.5 + pv_z * pv_sd
 sprintf("Pageview confidence interval is (%.4f, %.4f)", pv_cil, pv_ciu)
@@ -107,10 +124,11 @@ ck_con <- colSums(res_con[3])
 ck_exp <- colSums(res_exp[3])
 ck_frac = ck_exp / (ck_con + ck_exp)
 ck_sd = sqrt(0.5 * 0.5 / (ck_con + ck_exp))
-ck_z = -qnorm(0.05 / 2)
+ck_z = 1.96
 ck_cil = 0.5 - ck_z * ck_sd
 ck_ciu = 0.5 + ck_z * ck_sd
 sprintf("Clicks confidence interval is (%.4f, %.4f)", ck_cil, ck_ciu)
 sprintf("Clicks fraction in experiment group: %.4f", ck_frac)
 ```
-
+Both invariant metrics pass the sanity check - namely the fraction in each one is within the 95% confidence interval.
+(Note however that the fraction required by the grader seems to be the fraction in the control group)
