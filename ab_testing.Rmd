@@ -34,21 +34,26 @@ We calculate the standard deviation of our evaluation metrics.
 ```{r introduction}
 setwd("~/data_research/u_ab_testing")
 baseline = read.csv("baseline.csv", header = FALSE)
-# gross conversion
+click_no = 3200
+enrol_no = 660
+# gross conversion = users who enrol / users click start button
+gross_conv = 	0.20625
+
 # net conversion = users who pay / users click start button
 net_conv = 0.1093125
-click_no = 3200
+
 # retention = users who pay / users who enroll
 ret_rate = 0.53
-enrol_no = 660
+
 
 # Estimate the standard deviation using binomial/normal equation
 estimate_sd <- function(prob, n) {
   return(sqrt(prob*(1-prob)/n))
 }
 
+gross_conv_sd <- estimate_sd(gross_conv, click_no)
+net_conv_sd <- estimate_sd(net_conv, click_no)
 ret_sd <- estimate_sd(ret_rate, enrol_no)
-conv_sd <- estimate_sd(net_conv, click_no)
 
 # Calculate some rates
 base_total = 40000
@@ -57,11 +62,17 @@ enrol_rate = enrol_no / base_total
 
 # Scale the analytic standard deviations by sample size
 sample_n = 5000
-ret_sd * sqrt(enrol_no/(enrol_rate * sample_n))
-conv_sd * sqrt(click_no/(click_rate * sample_n))
+sgc_sd <- gross_conv_sd * sqrt(click_no/(click_rate * sample_n))
+snc_sd <- net_conv_sd * sqrt(click_no/(click_rate * sample_n))
+sr_sd <- ret_sd * sqrt(enrol_no/(enrol_rate * sample_n))
+
+# Print out our results
+sprintf("Gross conversion sd: %.4f", sgc_sd)
+sprintf("Net conversion sd: %.4f", snc_sd)
+sprintf("Retention sd: %.4f", sr_sd)
 ```
 
-## Calculating the page views required
+## Sizing
 
 ```{r pageviews, echo=FALSE}
 # Adapt the udacity code to calculate experiment size
