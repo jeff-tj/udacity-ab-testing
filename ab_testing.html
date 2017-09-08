@@ -143,7 +143,11 @@ $(document).ready(function () {
 </div>
 <div id="evaluation-metrics" class="section level3">
 <h3>Evaluation Metrics:</h3>
-<p>For evaluation metrics we have a number of choices. The number of user-ids would be a poor choice - as the change in an of itself would not tell us whether those students continued past the free-trial or not. Therefore, our invariant metrics could be: * Gross conversion * Retention * Net conversion Ideally I would like to see gross conversion reduce (i.e. users are more selective about when they enrol), net conversion stay about the same (i.e. we have not reduced the number of dedicated students signing up) and retention to increase (i.e. a smaller number enrol, but a greater proportion of them end up making a payment).</p>
+<p>For evaluation metrics we have a number of choices.</p>
+<p>Firstly - the goal of our experiment is to see if the change made can reduce the number of frustrated students. So although we will be trying to measure the number of enrollments and those that do not make a payment, the raw count of user-ids would not be the best metric as it is simply a raw count - this means that it is not ideal when there may be differences in sample sizes between our two groups. Instead it would be better to look at a rate like gross conversion to measure enrollments.</p>
+<p>Therefore, our evaluation metrics could be: * Gross conversion * Retention * Net conversion</p>
+<p>Ideally I would like to see gross conversion reduce (i.e. users are more selective about when they enrol), net conversion stay about the same (i.e. we have not reduced the number of dedicated students signing up) and retention to increase (i.e. a smaller number enrol, but a greater proportion of them end up making a payment).</p>
+<p>One other scenario to consider could be an increase in net conversion combined with no change in retention - this might represent a scenario where the question actually serves to help students pre-commit a set amount of time to the course. Hence we should see an increase in the number of students who stay enrolled, but this would not effect the number who complete the checkout.</p>
 </div>
 </div>
 <div id="measuring-standard-deviation" class="section level2">
@@ -190,6 +194,7 @@ sprintf(&quot;Gross conversion sd: %.4f&quot;, sgc_sd)</code></pre>
 <pre><code>## [1] &quot;Net conversion sd: 0.0156&quot;</code></pre>
 <pre class="r"><code>sprintf(&quot;Retention sd: %.4f&quot;, sr_sd)</code></pre>
 <pre><code>## [1] &quot;Retention sd: 0.0549&quot;</code></pre>
+<p>Because we do not expect our data to have a complex distribution, we would expect our estimate of analytic varaibility to match empirical variability. Also since what we are measuring is essentially binomial (i.e. we have a propability for each user of two events), since our sample is large we would be justified in approximating it as a normal distribution - another reason why we would expect analytic and emprirical variability to be quite close.</p>
 </div>
 <div id="sizing" class="section level2">
 <h2>Sizing</h2>
@@ -239,8 +244,9 @@ sprintf(&quot;Sample size required for retention: %i&quot;, ret_size)</code></pr
 </div>
 <div id="duration-and-exposure" class="section level3">
 <h3>Duration and Exposure</h3>
-<p>We now need to decide how much data to divert to the experiment. I would classify the experiment as low risk - given that in the signup process the user will be required to enter a fair bit of information - one extra question does not seem like if would be significant.</p>
-<p>Therefore I feel it would be reasonable to divert 50% of regular traffic to the experiment.</p>
+<p>We now need to decide how much data to divert to the experiment - this requires a consideration of how risk the experiment would be.</p>
+<p>The main risk here is that the introduction of an additional question would hinderence to people signing up and therefore reduce the number of enrollments. However, I feel that the risk here is quite low - a person signing up would be required to enter main details (name, address, payment method, etc) and so one extra question would not pose much of a risk. Nor do I think that the question is likely to create learned effects that would impact the result of the experiment (if anything the behaviour change of discouraging time poor students from enrolling is one of the expected out comes of the experiment).</p>
+<p>I would classify the experiment as low risk, therefore I feel it would be reasonable to divert 50% of regular traffic to the experiment.</p>
 <p>Using this assumption, we now calculate the duration required.</p>
 <pre class="r"><code># Exposure - how much of the traffic to divert
 exp = 0.5
@@ -255,7 +261,7 @@ sprintf(&quot;Days required for gross conversion: %i&quot;,
         ceiling(ret_size * 2 / enrol_rate / (exp * base_total)))</code></pre>
 <pre><code>## [1] &quot;Days required for retention: 237&quot;</code></pre>
 <p>We now see that it would be impractical to use retention as an evaluation metric - it would require almost 2/3 of a year to run the experiment.</p>
-<p>Therefore, I settle on using: * Gross conversion * Net conversion as the evaluation metrics when evaluating the experimental data. We retain the above invariant metrics.</p>
+<p>Therefore, I settle on using: * Gross conversion * Net conversion as the evaluation metrics when evaluating the experimental data. We retain the above invariant metrics. Having eliminated retention, we will require 679,300 pageviews. And we would expect the duration of the experiment to be 34 days.</p>
 </div>
 </div>
 </div>
@@ -286,8 +292,8 @@ pv_cil = 0.5 - pv_z * pv_sd
 pv_ciu = 0.5 + pv_z * pv_sd
 sprintf(&quot;Pageview confidence interval is (%.4f, %.4f)&quot;, pv_cil, pv_ciu)</code></pre>
 <pre><code>## [1] &quot;Pageview confidence interval is (0.4988, 0.5012)&quot;</code></pre>
-<pre class="r"><code>sprintf(&quot;Pageview fraction in experiment group: %.4f&quot;, pv_frac)</code></pre>
-<pre><code>## [1] &quot;Pageview fraction in experiment group: 0.4994&quot;</code></pre>
+<pre class="r"><code>sprintf(&quot;Pageview fraction in experiment group: %.4f&quot;, 1 - pv_frac)</code></pre>
+<pre><code>## [1] &quot;Pageview fraction in experiment group: 0.5006&quot;</code></pre>
 <pre class="r"><code># Count clicks and analyse
 ck_con &lt;- colSums(res_con[3])
 ck_exp &lt;- colSums(res_exp[3])
@@ -298,8 +304,8 @@ ck_cil = 0.5 - ck_z * ck_sd
 ck_ciu = 0.5 + ck_z * ck_sd
 sprintf(&quot;Clicks confidence interval is (%.4f, %.4f)&quot;, ck_cil, ck_ciu)</code></pre>
 <pre><code>## [1] &quot;Clicks confidence interval is (0.4959, 0.5041)&quot;</code></pre>
-<pre class="r"><code>sprintf(&quot;Clicks fraction in experiment group: %.4f&quot;, ck_frac)</code></pre>
-<pre><code>## [1] &quot;Clicks fraction in experiment group: 0.4995&quot;</code></pre>
+<pre class="r"><code>sprintf(&quot;Clicks fraction in experiment group: %.4f&quot;, 1 - ck_frac)</code></pre>
+<pre><code>## [1] &quot;Clicks fraction in experiment group: 0.5005&quot;</code></pre>
 <pre class="r"><code># Click-through-probability analysis
 ctp_con = ck_con / pv_con
 ctp_exp = ck_exp / pv_exp
@@ -385,22 +391,24 @@ sprintf(&quot;The 2-tailed sign test probability for gross conversion is: %.4f&q
 </div>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
-<p>We did not use the Bonferroni correction here as we were not testing multiple hypotheseses (i.e. we only made one change).</p>
+<p>We chose not to use the Bonferroni correction here as the I feel that the correction here would set such a high threshold that although it would control for false positives, it would do so at the expense of more false negatives. Here we would only want to launch if we received a positive for a reduction in gross conversion without significantly effecting net conversion. Therefore here a false negative is creating a higher hurdle to implement a change.</p>
 <p>We can say that the change had a statistically significant reduction in the gross conversion rate, both when considering the effect size and sign test. It also did not have a statistically significant impact on the net conversion.</p>
 <p>Both these conclusions are in line with our initial thoughts outlined above.</p>
 </div>
 <div id="recommendation" class="section level2">
 <h2>Recommendation</h2>
 <p>We have seen that two of our evaluation metrics behaved as we would expect. We do not have enough data to make a conclusion about the retention rate - which would be a good piece of information to have when making this change. However the length of running an experiment that would allow us to gather the data would be prohibtive. Therefore the choice is comes down to a business decision.</p>
-<p>Given that two of the metrics are favourable, I would recommend going ahead and implementing thew change, given that it does not significantly impact the proportion of students paying, but it does reduce significantly the number signing up for a free trial - which would help improve Udacity delivery by reducing resources spent on students who do not think they will have time to complete a course.</p>
+<p>Here the change has had a statistically and practically significant reduction on gross conversion, which is inline with our hypothesis - in that students without enough time are not enrolling.</p>
+<p>With net conversion, the confidence interval of (-0.0116, 0.0019) mostly lies on the negative side of zero. This is concerning as it points to a potention decrease in revenue for Udacity. However we note that the change is neither statistically nor practically significant.</p>
+<p>Therefore I would recommend going ahead and implementing thew change, given that it does not significantly impact the proportion of students paying, but it does reduce significantly the number signing up for a free trial - which would help improve Udacity delivery by reducing resources spent on students who do not think they will have time to complete a course.</p>
 </div>
 <div id="follow-up-experiment" class="section level2">
 <h2>Follow Up Experiment</h2>
-<p>A good follow up experiment would be whether allowing the students, who initially say they have insufficient time, to access the material for free eventually sign up for paid courses if they are sent a newsletter. The hypothesis here being that such students are keen to learn, but lack the free time to do so now, but will sign up when they have time later. In knowing whether this is the case, it could be valuable to Udacity to know whether to follow up with such students with help and also reminders of when courses open and start accepting students.</p>
-<p>I think that to set this up we would require the students who access the free material to also create a free-account - therefore our unit of diversion would be user-id. This would be required as we would have to be able to track the students over time as well as communicate with them</p>
-<p>We then send a proportion of the accounts follow-up email newsletters. Of course the difficulty here is that different students have different circumstances and so will become free at different times - however unless there is some good reason, we can assume that on average the distributions should be roughly equal. We then measure the number of students that sign up and make a payment.</p>
-<p>We then compare the sign up rates between the control group that were just allowed to continue accessing the free material and the group that was sent follow up emails. We would want to see a significantly higher sign up rate in the second group.</p>
-<p>This would be a good experiment from a business stand point as it would not impact on revenue (these are students who were not currently paying) and the costs are very low (since we are just sending out follow up emails)</p>
+<p>We consider that the there may also be frustrated students who cancel early in the course because they become stuck on a specific part of the course and not aware of the resources available. These students may benefit from a follow up email newsletter one week into the course that lists and reminds them of the resources available to them if they are stuck on a problem.</p>
+<p>Therefore out unit of diversion should be user-id, since we want to track which of the students currently signed up receive a follow up email newsletter.</p>
+<p>The metric we would be interested in would be retention - to prove our hypothesis we would want to see the retention rates in our experiment group to be higher than the rates in the control group.</p>
+<p>This would be a good experiment from a business stand point as it would not impact on revenue (these are students who are currently on their free trial) and the costs are very low (since we are just sending out follow up emails).</p>
+<p>One issue that might arise given what we have seen above is that showing a statistically significant change in retention may require a large sample size.</p>
 </div>
 </div>
 
