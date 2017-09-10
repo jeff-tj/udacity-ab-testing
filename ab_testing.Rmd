@@ -29,14 +29,13 @@ For evaluation metrics we have a number of choices.
 
 Firstly - the goal of our experiment is to see if the change made can reduce the number of frustrated students. So although we will be trying to measure the number of enrollments and those that do not make a payment, the raw count of user-ids would not be the best metric as it is simply a raw count - this means that it is not ideal when there may be differences in sample sizes between our two groups. Instead it would be better to look at a rate like gross conversion to measure enrollments.
 
-Therefore, our evaluation metrics could be:
+Therefore, our evaluation metrics will be:
 * Gross conversion
-* Retention
 * Net conversion
 
-Ideally I would like to see gross conversion reduce (i.e. users are more selective about when they enrol), net conversion stay about the same (i.e. we have not reduced the number of dedicated students signing up) and retention to increase (i.e. a smaller number enrol, but a greater proportion of them end up making a payment). 
+Rentention would be an evaluation metric that we could use and indeed would give us a more complete picture of what we want to track. However, as we will see below, we lack power for this metric.
 
-One other scenario to consider could be an increase in net conversion combined with no change in retention - this might represent a scenario where the question actually serves to help students pre-commit a set amount of time to the course. Hence we should see an increase in the number of students who stay enrolled, but this would not effect the number who complete the checkout.
+Our launch criteria will be to see gross conversion reduce (i.e. users are more selective about when they enrol), net conversion not decrease (i.e. we have not reduced the number of dedicated students signing up).
 
 ## Measuring Standard Deviation
 We calculate the standard deviation of our evaluation metrics.
@@ -82,7 +81,7 @@ sprintf("Net conversion sd: %.4f", snc_sd)
 sprintf("Retention sd: %.4f", sr_sd)
 ```
 
-Because we do not expect our data to have a complex distribution, we would expect our estimate of analytic varaibility to match empirical variability. Also since what we are measuring is essentially binomial (i.e. we have a propability for each user of two events), since our sample is large we would be justified in approximating it as a normal distribution - another reason why we would expect analytic and emprirical variability to be quite close.
+Because we do not expect our data to have a complex distribution, we would expect our estimate of analytic varaibility to match empirical variability. This is also reinforced by the fact that our unit of diversion matches the unit of diversion. Also since what we are measuring is essentially binomial (i.e. we have a propability for each user of two events), since our sample is large we would be justified in approximating it as a normal distribution - another reason why we would expect analytic and emprirical variability to be quite close.
 
 ## Sizing
 ### Number of samples required
@@ -131,14 +130,16 @@ We can see that we may run into an issue here if we wish to use retention, as it
 ### Duration and Exposure
 We now need to decide how much data to divert to the experiment - this requires a consideration of how risk the experiment would be. 
 
-The main risk here is that the introduction of an additional question would hinderence to people signing up and therefore reduce the number of enrollments. However, I feel that the risk here is quite low - a person signing up would be required to enter main details (name, address, payment method, etc) and so one extra question would not pose much of a risk. Nor do I think that the question is likely to create learned effects that would impact the result of the experiment (if anything the behaviour change of discouraging time poor students from enrolling is one of the expected out comes of the experiment).
+The data does not collect any sensitive information - all it aks is whether the student would be prepared to spend more than 5 hours a week
 
-I would classify the experiment as low risk, therefore I feel it would be reasonable to divert 50% of regular traffic to the experiment.
+The main risk here is that the introduction of an additional question would hinderence to people signing up and therefore reduce the number of enrollments. However, I feel that the risk here is quite low - a person signing up would be required to enter main details (name, address, payment method, etc) and so one extra question would not pose much of a risk. Nor do I think that the question is likely to create learned effects that would impact the result of the experiment (if anything the behaviour change of discouraging time poor students from enrolling is one of the expected out comes of the experiment). Also whether the change would cause less students to pay is one of the goals of the experiment - so I feel that finding th answer out as quickly ass possible would be ideal.
+
+I would classify the experiment as low risk, therefore I feel it would be reasonable to divert all of the traffic to the experiment.
 
 Using this assumption, we now calculate the duration required.
 ```{r}
 # Exposure - how much of the traffic to divert
-exp = 0.5
+exp = 1.0
 
 sprintf("Days required for gross conversion: %i", 
         ceiling(gross_conv_size * 2 /click_rate / (exp * base_total)))
@@ -147,12 +148,14 @@ sprintf("Days required for net conversion: %i",
 sprintf("Days required for retention: %i", 
         ceiling(ret_size * 2 / enrol_rate / (exp * base_total)))
 ```
-We now see that it would be impractical to use retention as an evaluation metric - it would require almost 2/3 of a year to run the experiment.
+We now see that it would be impractical to use retention as an evaluation metric - it would require almost 1/3 of a year to run the experiment.
 
 Therefore, I settle on using:
 * Gross conversion
 * Net conversion
-as the evaluation metrics when evaluating the experimental data. We retain the above invariant metrics. Having eliminated retention, we will require 679,300 pageviews. And we would expect the duration of the experiment to be 34 days.
+as the evaluation metrics when evaluating the experimental data. We retain the above invariant metrics. Having eliminated retention, we will require 679,300 pageviews. And we would expect the duration of the experiment to be 17 days.
+
+We can see that diverting 50% of the traffic would take 34 days longer than a couple of weeks. So if we are diverting the majority of the traffic, I feel we are justified in diverting all the traffic as this would also help Udacity in finding out the results of whether to implement the change quicker as well.
 
 # Experiment Analysis
 
@@ -293,15 +296,17 @@ Here the change has had a statistically and practically significant reduction on
 
 With net conversion, the confidence interval of (-0.0116, 0.0019) mostly lies on the negative side of zero. This is concerning as it points to a potention decrease in revenue for Udacity. However we note that the change is neither statistically nor practically significant.
 
-Therefore I would recommend going ahead and implementing thew change, given that it does not significantly impact the proportion of students paying, but it does reduce significantly the number signing up for a free trial - which would help improve Udacity delivery by reducing resources spent on students who do not think they will have time to complete a course.
+The decrease is net conversion violates the launch parameters specified above and since it represents a potential decrease in revenue, we cannot recommend launching the change.
 
 ## Follow Up Experiment
 We consider that the there may also be frustrated students who cancel early in the course because they become stuck on a specific part of the course and not aware of the resources available. These students may benefit from a follow up email newsletter one week into the course that lists and reminds them of the resources available to them if they are stuck on a problem.
 
-Therefore out unit of diversion should be user-id, since we want to track which of the students currently signed up receive a follow up email newsletter. 
+Therefore our unit of diversion should be user-id, since we want to track which of the students currently signed up receive a follow up email newsletter.  Our invariant metric should also be user-id.
 
 The metric we would be interested in would be retention - to prove our hypothesis we would want to see the retention rates in our experiment group to be higher than the rates in the control group.
 
 This would be a good experiment from a business stand point as it would not impact on revenue (these are students who are currently on their free trial) and the costs are very low (since we are just sending out follow up emails). 
 
 One issue that might arise given what we have seen above is that showing a statistically significant change in retention may require a large sample size.
+
+Insummary
